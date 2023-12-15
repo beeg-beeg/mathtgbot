@@ -4,8 +4,7 @@ from random import choice, randint
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
-# Введите ваш токен бота
-TOKEN = "6026789241:AAHI9iG0_Q0qJiFs4Xf9XoWX7hoZcrLEC0c"
+TOKEN = ""
 
 
 # Дополнительные функции для работы с датой и серией
