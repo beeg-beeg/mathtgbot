@@ -8,13 +8,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 # Введите ваш токен бота
 TOKEN = "6026789241:AAHI9iG0_Q0qJiFs4Xf9XoWX7hoZcrLEC0c"
 
-text_problems = [
-    {"problem": "В классе 24 ученика. Девочек в классе в 2 раза больше, чем мальчиков. Сколько мальчиков в классе?", "answer": "8"},
-    {"problem": "У Маши было 15 конфет. Она отдала 5 конфет своему другу. Сколько конфет осталось у Маши?", "answer": "10"},
-    {"problem": "На столе лежат 3 яблока и 2 банана. Сколько всего фруктов лежит на столе?", "answer": "5"},
-    {"problem": "Поезд ехал 2 часа со скоростью 60 км/ч. Какое расстояние проехал поезд?", "answer": "120"},
-    {"problem": "В магазине покупатель купил 2 пачки молока по 30 рублей и хлеб за 20 рублей. Сколько всего денег он потратил?", "answer": "80"},
-]
+
 # Дополнительные функции для работы с датой и серией
 def add_streak(context: CallbackContext):
     current_streak = context.user_data.get('streak', 0)
@@ -40,9 +34,6 @@ def reset_streak_if_needed(context: CallbackContext):
 def addpar(n):
     return f"{n}" if n >= 0 else f"({n})"
 
-def generate_text_problem():
-    selected_problem = random.choice(text_problems)
-    return selected_problem["problem"], selected_problem["answer"]
 
 #Генерация задач
 def generate_problem(difficulty):
@@ -70,7 +61,6 @@ def generate_problem(difficulty):
 
 #Сложность
 def math_problem(update: Update, context: CallbackContext):
-    difficulty = 1
     if context.args:
         try:
             difficulty = int(context.args[0])
@@ -155,17 +145,18 @@ def help(update: Update, context: CallbackContext) -> None:
     )
     update.message.reply_text(help_message)
 
-def main() -> None:
-    updater = Updater(TOKEN)
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler("help", help))
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("problem", math_problem, pass_args=True))
-    dispatcher.add_handler(CommandHandler("stats", stats))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, check_answer))
+def main():
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("problem", math_problem, pass_args=True))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, check_answer))
 
     updater.start_polling()
     updater.idle()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
