@@ -4,8 +4,8 @@ import random
 from random import choice, randint
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+import json
 
-# Введите ваш токен бота
 TOKEN = "6026789241:AAHI9iG0_Q0qJiFs4Xf9XoWX7hoZcrLEC0c"
 
 
@@ -59,6 +59,16 @@ def generate_problem(difficulty):
     problem = f"({addpar(v1)} {op1} {addpar(v2)}) {op2} ({addpar(v3)} {op3} {addpar(v4)})"
     return problem
 
+def generate_text_problem(difficulty):
+    difficultyToKey = {
+        1 : "easy",
+        2 : "mid",
+        3 : "hard"
+    }
+    with open("problems.json", "r") as f:
+        problems = json.load(f)[difficultyToKey[difficulty]]
+    return choice(problems)
+
 #Сложность
 def math_problem(update: Update, context: CallbackContext):
     if context.args:
@@ -71,8 +81,27 @@ def math_problem(update: Update, context: CallbackContext):
 
     problem = generate_problem(difficulty)
     update.message.reply_text(problem)
+    context.user_data['type'] = "math"
     context.user_data['problem'] = problem
     context.user_data['answer'] = round(eval(problem))
+    context.user_data['total_problems'] = context.user_data.get('total_problems', 0) + 1
+    context.user_data['remaining_problems'] = 4
+    context.user_data['correct_problems'] = []
+    context.user_data['incorrect_problems'] = []
+
+def text_problem(update, context):
+    if context.args:
+        try:
+            difficulty = int(context.args[0])
+            difficulty = min(max(difficulty, 1), 3)
+        except ValueError:
+            update.message.reply_text("Неверный формат сложности. Используйте число от 1 до 3.")
+            return
+    problem = generate_text_problem(difficulty)
+    update.message.reply_text(problem["text"])
+    context.user_data['type'] = "text"
+    context.user_data['problem'] = problem["text"]
+    context.user_data['answer'] = problem["answer"]
     context.user_data['total_problems'] = context.user_data.get('total_problems', 0) + 1
     context.user_data['remaining_problems'] = 4
     context.user_data['correct_problems'] = []
@@ -97,10 +126,16 @@ def check_answer(update: Update, context: CallbackContext):
         remaining_problems = context.user_data.get('remaining_problems', 0)
         if remaining_problems > 0:
             difficulty = context.user_data.get('difficulty', 1)
-            problem = generate_problem(difficulty)
-            update.message.reply_text(problem)
-            context.user_data['problem'] = problem
-            context.user_data['answer'] = round(eval(problem))
+            if context.user_data['type'] == "math":
+                problem = generate_problem(difficulty)
+                update.message.reply_text(problem)
+                context.user_data['problem'] = problem
+                context.user_data['answer'] = round(eval(problem))
+            elif context.user_data['type'] == "text":
+                problem = generate_text_problem(difficulty)
+                update.message.reply_text(problem["text"])
+                context.user_data['problem'] = problem["text"]
+                context.user_data['answer'] = problem["answer"]
             context.user_data['remaining_problems'] = remaining_problems - 1
         else:
             correct_problems = "\n".join(context.user_data['correct_problems'])
@@ -152,6 +187,7 @@ def main():
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("problem", math_problem, pass_args=True))
+    dp.add_handler(CommandHandler("text_problem", text_problem, pass_args=True))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, check_answer))
 
     updater.start_polling()
