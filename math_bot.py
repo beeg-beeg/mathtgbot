@@ -19,6 +19,7 @@ def add_streak(context: CallbackContext):
     context.user_data['streak'] = current_streak + 1
     context.user_data['last_solved_date'] = datetime.date.today().isoformat()  # Сохраняем дату в формате ISO для удобства
 
+
 def reset_streak_if_needed(context: CallbackContext):
     last_solved_date_str = context.user_data.get('last_solved_date')
     if last_solved_date_str is not None:
