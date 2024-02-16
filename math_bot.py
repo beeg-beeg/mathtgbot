@@ -6,29 +6,26 @@ from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import json
 
-TOKEN = ""
+TOKEN = "6026789241:AAEAL5MkYhm7qo0mNYLYr6mR_itrkCt5D5g"
+
+
+
+
 
 
 # Дополнительные функции для работы с датой и серией
 def add_streak(context: CallbackContext):
     current_streak = context.user_data.get('streak', 0)
-    last_solved_date = context.user_data.get('last_solved_date', datetime.date.today() - datetime.timedelta(days=1))
-
-    if last_solved_date == datetime.date.today() - datetime.timedelta(days=1):
-        # Если последняя решенная задача была вчера, увеличиваем серию
-        current_streak += 1
-    elif last_solved_date < datetime.date.today() - datetime.timedelta(days=1):
-        # Если последний раз решали задачу более чем вчера, начинаем серию заново
-        current_streak = 1
-
-    context.user_data['streak'] = current_streak
-    context.user_data['last_solved_date'] = datetime.date.today()
+    context.user_data['streak'] = current_streak + 1
+    context.user_data['last_solved_date'] = datetime.date.today().isoformat()  # Сохраняем дату в формате ISO для удобства
 
 def reset_streak_if_needed(context: CallbackContext):
-    last_solved_date = context.user_data.get('last_solved_date', datetime.date.today())
-    if last_solved_date < datetime.date.today() - datetime.timedelta(days=1):
-        # Сброс серии, если с момента решения последней задачи прошло больше одного дня
-        context.user_data['streak'] = 0
+    last_solved_date_str = context.user_data.get('last_solved_date')
+    if last_solved_date_str is not None:
+        last_solved_date = datetime.datetime.strptime(last_solved_date_str, '%Y-%m-%d').date()
+        if (datetime.date.today() - last_solved_date).days > 1:
+            context.user_data['streak'] = 0
+
 
 #Проверка отрицательного числа и его записи
 def addpar(n):
@@ -91,7 +88,9 @@ def math_problem(update: Update, context: CallbackContext):
     context.user_data['total_problems'] = 1
     context.user_data['remaining_problems'] = 4  # Осталось 4 задачи после первой
 
+
 def text_problem(update, context):
+    difficulty = 1
     if context.args:
         try:
             difficulty = int(context.args[0])
@@ -99,19 +98,20 @@ def text_problem(update, context):
         except ValueError:
             update.message.reply_text("Неверный формат сложности. Используйте число от 1 до 3.")
             return
+
     problem = generate_text_problem(difficulty)
     update.message.reply_text(problem["text"])
+
     context.user_data['type'] = "text"
     context.user_data['problem'] = problem["text"]
     context.user_data['answer'] = problem["answer"]
-    context.user_data['total_problems'] = context.user_data.get('total_problems', 0) + 1
+    context.user_data['difficulty'] = difficulty
     context.user_data['remaining_problems'] = 4
-    context.user_data['correct_problems'] = []
-    context.user_data['incorrect_problems'] = []
+
 
 #Проверка задач
 def check_answer(update: Update, context: CallbackContext):
-    # Инициализация списков, если они еще не были созданы
+    # Проверяем, были ли инициализированы списки для хранения правильных и неправильных ответов
     if 'correct_problems' not in context.user_data:
         context.user_data['correct_problems'] = []
     if 'incorrect_problems' not in context.user_data:
@@ -119,38 +119,52 @@ def check_answer(update: Update, context: CallbackContext):
 
     user_answer = update.message.text.strip()
     correct_answer = context.user_data.get('answer')
-    problem = context.user_data.get('problem')
+    problem_type = context.user_data.get('type', 'math')
+
+    # Сброс серии, если необходимо
+    reset_streak_if_needed(context)
 
     if correct_answer is not None:
-        if str(correct_answer) == user_answer:
+        if str(correct_answer).lower() == user_answer.lower():
             update.message.reply_text("Правильно! Ответ верный.")
             context.user_data['correct_answers'] = context.user_data.get('correct_answers', 0) + 1
-            context.user_data['correct_problems'].append(problem)
-            add_streak(context)
+            context.user_data['correct_problems'].append(context.user_data['problem'])
+            add_streak(context)  # Увеличиваем серию правильных ответов
         else:
-            update.message.reply_text(f"Неправильно! Правильный ответ: {correct_answer}")
-            context.user_data['incorrect_problems'].append(problem)
+            update.message.reply_text(f"Неправильно! Правильный ответ: {correct_answer}.")
+            context.user_data['incorrect_problems'].append(context.user_data['problem'])
 
         remaining_problems = context.user_data.get('remaining_problems', 0)
+        difficulty = context.user_data.get('difficulty', 1)
         if remaining_problems > 0:
-            difficulty = context.user_data.get('difficulty', 1)
-            problem = generate_problem(difficulty)
-            update.message.reply_text(problem)
-            context.user_data['problem'] = problem
-            context.user_data['answer'] = round(eval(problem))
+            if problem_type == "math":
+                new_problem = generate_problem(difficulty)
+                update.message.reply_text(new_problem)
+                context.user_data['problem'] = new_problem
+                context.user_data['answer'] = round(eval(new_problem))
+            elif problem_type == "text":
+                new_problem = generate_text_problem(difficulty)
+                update.message.reply_text(new_problem["text"])
+                context.user_data['problem'] = new_problem["text"]
+                context.user_data['answer'] = new_problem["answer"]
+
             context.user_data['remaining_problems'] = remaining_problems - 1
         else:
+            # Вывод результатов после решения всех задач
             correct_problems = "\n".join(context.user_data['correct_problems'])
             incorrect_problems = "\n".join(context.user_data['incorrect_problems'])
-            result_message = f"Результаты:\n\nПравильные ответы:\n{correct_problems}\n\nНеправильные ответы:\n{incorrect_problems}"
+            result_message = f"Результаты:\n\nПравильные ответы:\n{correct_problems}\n\nНеправильные ответы:\n{incorrect_problems}\nТекущая серия правильных ответов: {context.user_data.get('streak', 0)}"
             update.message.reply_text(result_message)
-            # После вывода результатов очистите данные для нового раунда задач
+
+            # Очищаем данные пользователя для нового набора задач, кроме информации о серии
+            context.user_data['total_problems'] = 0
+            context.user_data['remaining_problems'] = 0
             context.user_data['correct_problems'] = []
             context.user_data['incorrect_problems'] = []
-            context.user_data['total_problems'] = 0
             context.user_data['correct_answers'] = 0
     else:
-        update.message.reply_text("Пожалуйста, сначала запросите задачу с помощью команды /problem.")
+        update.message.reply_text("Пожалуйста, сначала запросите задачу с помощью команды /problem или /text_problem.")
+
 
 
 def stats(update: Update, context: CallbackContext) -> None:
@@ -193,6 +207,7 @@ def main():
 
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("stats", stats))
     dp.add_handler(CommandHandler("problem", math_problem, pass_args=True))
     dp.add_handler(CommandHandler("text_problem", text_problem, pass_args=True))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, check_answer))
