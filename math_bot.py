@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import json
 
-TOKEN = "6026789241:AAHI9iG0_Q0qJiFs4Xf9XoWX7hoZcrLEC0c"
+TOKEN = ""
 
 
 # Дополнительные функции для работы с датой и серией
@@ -38,26 +38,26 @@ def addpar(n):
 #Генерация задач
 def generate_problem(difficulty):
     if difficulty == 1:
-        ops = [["+", "-"]]
+        ops = ["+", "-"]
         num_range = (-10, 10)
     elif difficulty == 2:
-        ops = [["+", "-"], ["*", "/"]]
+        ops = ["+", "-", "*", "/"]
         num_range = (-50, 50)
-    else:
-        ops = [["+", "-"], ["*", "/"]]
+    else:  # difficulty == 3
+        ops = ["+", "-", "*", "/"]
         num_range = (-100, 100)
 
-    v3 = randint(*num_range)
-    v4 = randint(*num_range)
-    op3 = choice(ops[0])
-    right = eval(f"{v3}{op3}{v4}")
-    v1 = right * (randint(-50, 50+right + 100)//right + 1)
-    v2 = right * (randint(-50-right-100, 50)//right + 1)
-    op1 = choice(ops[0])
-    op2 = choice(ops[min(difficulty - 1, 1)])
+    # Генерация четырех случайных чисел в заданном диапазоне
+    v1, v2, v3, v4 = [randint(*num_range) for _ in range(4)]
 
-    problem = f"({addpar(v1)} {op1} {addpar(v2)}) {op2} ({addpar(v3)} {op3} {addpar(v4)})"
+    # Выбор двух случайных операций из списка доступных
+    op1, op2 = choice(ops), choice(ops)
+
+    # Составление математической задачи
+    problem = f"({addpar(v1)} {op1} {addpar(v2)}) {op2} ({addpar(v3)} {op2} {addpar(v4)})"
     return problem
+
+
 
 def generate_text_problem(difficulty):
     difficultyToKey = {
@@ -71,6 +71,7 @@ def generate_text_problem(difficulty):
 
 #Сложность
 def math_problem(update: Update, context: CallbackContext):
+    difficulty = 1  # Устанавливаем сложность по умолчанию
     if context.args:
         try:
             difficulty = int(context.args[0])
@@ -79,15 +80,16 @@ def math_problem(update: Update, context: CallbackContext):
             update.message.reply_text("Неверный формат сложности. Используйте число от 1 до 3.")
             return
 
-    problem = generate_problem(difficulty)
+    problem = generate_problem(difficulty)  # Генерируем одну задачу
     update.message.reply_text(problem)
+
+    # Сохраняем информацию о задаче и сложности
     context.user_data['type'] = "math"
     context.user_data['problem'] = problem
     context.user_data['answer'] = round(eval(problem))
-    context.user_data['total_problems'] = context.user_data.get('total_problems', 0) + 1
-    context.user_data['remaining_problems'] = 4
-    context.user_data['correct_problems'] = []
-    context.user_data['incorrect_problems'] = []
+    context.user_data['difficulty'] = difficulty
+    context.user_data['total_problems'] = 1
+    context.user_data['remaining_problems'] = 4  # Осталось 4 задачи после первой
 
 def text_problem(update, context):
     if context.args:
@@ -109,6 +111,12 @@ def text_problem(update, context):
 
 #Проверка задач
 def check_answer(update: Update, context: CallbackContext):
+    # Инициализация списков, если они еще не были созданы
+    if 'correct_problems' not in context.user_data:
+        context.user_data['correct_problems'] = []
+    if 'incorrect_problems' not in context.user_data:
+        context.user_data['incorrect_problems'] = []
+
     user_answer = update.message.text.strip()
     correct_answer = context.user_data.get('answer')
     problem = context.user_data.get('problem')
@@ -126,26 +134,25 @@ def check_answer(update: Update, context: CallbackContext):
         remaining_problems = context.user_data.get('remaining_problems', 0)
         if remaining_problems > 0:
             difficulty = context.user_data.get('difficulty', 1)
-            if context.user_data['type'] == "math":
-                problem = generate_problem(difficulty)
-                update.message.reply_text(problem)
-                context.user_data['problem'] = problem
-                context.user_data['answer'] = round(eval(problem))
-            elif context.user_data['type'] == "text":
-                problem = generate_text_problem(difficulty)
-                update.message.reply_text(problem["text"])
-                context.user_data['problem'] = problem["text"]
-                context.user_data['answer'] = problem["answer"]
+            problem = generate_problem(difficulty)
+            update.message.reply_text(problem)
+            context.user_data['problem'] = problem
+            context.user_data['answer'] = round(eval(problem))
             context.user_data['remaining_problems'] = remaining_problems - 1
         else:
             correct_problems = "\n".join(context.user_data['correct_problems'])
             incorrect_problems = "\n".join(context.user_data['incorrect_problems'])
-            result_message = f"Результаты:\n\nПравильные ответы:\n{correct_problems}\n\nНеправильные ответы:\n{incorrect_problems}\nОцените бота с помощью этой формы: https://forms.gle/osmSwwv6RshLCcsL7\n Спасибо!"
+            result_message = f"Результаты:\n\nПравильные ответы:\n{correct_problems}\n\nНеправильные ответы:\n{incorrect_problems}"
             update.message.reply_text(result_message)
+            # После вывода результатов очистите данные для нового раунда задач
+            context.user_data['correct_problems'] = []
+            context.user_data['incorrect_problems'] = []
+            context.user_data['total_problems'] = 0
+            context.user_data['correct_answers'] = 0
     else:
         update.message.reply_text("Пожалуйста, сначала запросите задачу с помощью команды /problem.")
 
-#Статистика
+
 def stats(update: Update, context: CallbackContext) -> None:
     reset_streak_if_needed(context)
     current_streak = context.user_data.get('streak', 0)
