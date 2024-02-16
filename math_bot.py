@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import json
 
-TOKEN = "6026789241:AAEAL5MkYhm7qo0mNYLYr6mR_itrkCt5D5g"
+TOKEN = ""
 
 
 
