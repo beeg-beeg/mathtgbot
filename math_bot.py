@@ -168,7 +168,7 @@ def stats(update: Update, context: CallbackContext) -> None:
     current_streak = context.user_data.get('streak', 0)
     total_problems = context.user_data.get('total_problems', 0)
     correct_answers = context.user_data.get('correct_answers', 0)
-    update.message.reply_text(f"Всего задач: {total_problems}\nПравильных ответов: {correct_answers}\nТекущая серия: {current_streak}")
+    update.message.reply_text(f"Всего задач: {total_problems}\nПравильных ответов: {correct_answers}\nТекущая серия: {current_streak}\n Пожалуйста пройдите форму для оценки бота: https://forms.gle/pTVj4sBdZyfNfetE7")
 
 #СТАРТ
 def start(update: Update, context: CallbackContext) -> None:
