@@ -1,6 +1,5 @@
 
 import datetime
-import random
 from random import choice, randint
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
