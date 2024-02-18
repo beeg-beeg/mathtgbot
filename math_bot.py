@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 import json
 
-TOKEN = ""
+TOKEN = "6026789241:AAEAL5MkYhm7qo0mNYLYr6mR_itrkCt5D5g"
 
 
 
@@ -45,13 +45,11 @@ def generate_problem(difficulty):
         ops = ["+", "-", "*", "/"]
         num_range = (-100, 100)
 
-    # Генерация четырех случайных чисел в заданном диапазоне
     v1, v2, v3, v4 = [randint(*num_range) for _ in range(4)]
 
-    # Выбор двух случайных операций из списка доступных
     op1, op2 = choice(ops), choice(ops)
 
-    # Составление математической задачи
+
     problem = f"({addpar(v1)} {op1} {addpar(v2)}) {op2} ({addpar(v3)} {op2} {addpar(v4)})"
     return problem
 
@@ -69,7 +67,7 @@ def generate_text_problem(difficulty):
 
 #Сложность
 def math_problem(update: Update, context: CallbackContext):
-    difficulty = 1  # Устанавливаем сложность по умолчанию
+    difficulty = 1
     if context.args:
         try:
             difficulty = int(context.args[0])
@@ -78,16 +76,15 @@ def math_problem(update: Update, context: CallbackContext):
             update.message.reply_text("Неверный формат сложности. Используйте число от 1 до 3.")
             return
 
-    problem = generate_problem(difficulty)  # Генерируем одну задачу
+    problem = generate_problem(difficulty)
     update.message.reply_text(problem)
 
-    # Сохраняем информацию о задаче и сложности
     context.user_data['type'] = "math"
     context.user_data['problem'] = problem
     context.user_data['answer'] = round(eval(problem))
     context.user_data['difficulty'] = difficulty
     context.user_data['total_problems'] = 1
-    context.user_data['remaining_problems'] = 4  # Осталось 4 задачи после первой
+    context.user_data['remaining_problems'] = 4
 
 
 def text_problem(update, context):
@@ -112,7 +109,6 @@ def text_problem(update, context):
 
 #Проверка задач
 def check_answer(update: Update, context: CallbackContext):
-    # Проверяем, были ли инициализированы списки для хранения правильных и неправильных ответов
     if 'correct_problems' not in context.user_data:
         context.user_data['correct_problems'] = []
     if 'incorrect_problems' not in context.user_data:
@@ -122,7 +118,6 @@ def check_answer(update: Update, context: CallbackContext):
     correct_answer = context.user_data.get('answer')
     problem_type = context.user_data.get('type', 'math')
 
-    # Сброс серии, если необходимо
     reset_streak_if_needed(context)
 
     if correct_answer is not None:
@@ -196,7 +191,7 @@ def help(update: Update, context: CallbackContext) -> None:
         "/start - получить приветственное сообщение и краткое руководство по использованию бота.\n"
         "/problem [сложность] - запросить математическую задачу заданной сложности. Доступные уровни сложности: 1 (легко), 2 (средне), 3 (сложно).\n"
         "/text_problem [сложность] - запросить текстовую задачу заданной сложности. Аналогично, доступны уровни сложности 1, 2 и 3.\n"
-        "/stats - показать вашу статистику, включая общее количество решенных задач, количество правильных ответов и вашу текущую серию (streak) правильных ответов подряд.\n"
+        "/stats - показать вашу статистику, включая общее количество решенных задач, количество правильных ответов и вашу текущую серию правильных ответов подряд.\n"
         "\nПросто отправьте ваш ответ на задачу, и бот проверит его. После каждого правильного ответа вы получите следующую задачу той же сложности, пока не решите 5 задач подряд.\n"
         "\nЕсли у вас возникнут вопросы или предложения, пожалуйста, обращайтесь к администратору бота."
     )
